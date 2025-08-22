@@ -1,6 +1,6 @@
-import { createPool } from "mysql2/promise";
+import mysql from "mysql2/promise";
 
-const pool = createPool({
+const pool = mysql.createPool({
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
@@ -9,5 +9,15 @@ const pool = createPool({
   connectionLimit: 10,
   queueLimit: 0,
 });
+
+// Helper function for getting a connection
+export const getConnection = async () => {
+  return await pool.getConnection();
+};
+
+// Helper function for executing queries
+export const execute = async (query, params) => {
+  return await pool.execute(query, params);
+};
 
 export default pool;

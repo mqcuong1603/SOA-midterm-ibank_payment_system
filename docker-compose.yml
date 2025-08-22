@@ -1,0 +1,99 @@
+services:
+  # MySQL Database
+  mysql:
+    image: mysql:8.0
+    container_name: ibanking-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      MYSQL_DATABASE: ${DB_NAME:-ibanking_db}
+      MYSQL_USER: ${MYSQL_USER:-ibanking_user}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-ibanking_pass}
+    ports:
+      - "${DB_PORT:-3306}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - ibanking-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: ibanking-redis
+    restart: always
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - ibanking-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Node.js API
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: ${BUILD_TARGET:-development}
+    container_name: ibanking-api
+    restart: always
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      PORT: ${PORT:-3000}
+      # Database configuration
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: ${DB_USER:-ibanking_user}
+      DB_PASSWORD: ${DB_PASSWORD:-ibanking_pass}
+      DB_NAME: ${DB_NAME:-ibanking_db}
+      # Redis configuration
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      # JWT Secret
+      JWT_SECRET: ${JWT_SECRET:-secret}
+      # Email configuration
+      EMAIL_HOST: ${EMAIL_HOST:-smtp.gmail.com}
+      EMAIL_PORT: ${EMAIL_PORT:-587}
+      EMAIL_USER: ${EMAIL_USER}
+      EMAIL_PASSWORD: ${EMAIL_PASSWORD}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - ibanking-network
+    volumes:
+      - ./:/app
+      - /app/node_modules
+
+  # Adminer for database management
+  adminer:
+    image: adminer
+    container_name: ibanking-adminer
+    restart: always
+    ports:
+      - "8080:8080"
+    networks:
+      - ibanking-network
+    depends_on:
+      - mysql
+
+networks:
+  ibanking-network:
+    driver: bridge
+
+volumes:
+  mysql_data:
+  redis_data:

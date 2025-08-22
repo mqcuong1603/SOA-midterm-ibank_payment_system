@@ -1,7 +1,7 @@
 // routes/user.js
 import { Router } from "express";
-import { execute } from "../config/database";
-import { authenticateToken } from "../middleware/auth";
+import { execute } from "../config/database.js";
+import { authenticateToken } from "../middleware/auth.js";
 
 const router = Router();
 

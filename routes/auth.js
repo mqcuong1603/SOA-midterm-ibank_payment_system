@@ -1,8 +1,11 @@
 import { Router } from "express";
-import { compare } from "bcrypt";
-import { sign } from "jsonwebtoken";
-import { execute } from "../config/database";
+import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
+import { execute } from "../config/database.js";
 import { body, validationResult } from "express-validator";
+
+const { compare } = bcrypt;
+const { sign } = jwt;
 
 const router = Router();
 

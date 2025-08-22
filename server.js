@@ -1,13 +1,13 @@
 import express, { json, urlencoded } from "express";
 import cors from "cors";
-import { config } from "dotenv";
-import authRoutes from "./routes/auth";
-import userRoutes from "./routes/user";
-import studentRoutes from "./routes/student";
-import paymentRoutes from "./routes/payment";
-import transactionRoutes from "./routes/transaction";
+import dotenv from "dotenv";
+import authRoutes from "./routes/auth.js";
+import userRoutes from "./routes/user.js";
+import studentRoutes from "./routes/student.js";
+import paymentRoutes from "./routes/payment.js";
+import transactionRoutes from "./routes/transaction.js";
 
-config();
+dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;

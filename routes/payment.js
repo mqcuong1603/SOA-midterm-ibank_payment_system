@@ -1,13 +1,13 @@
-import { Router } from "express";
+import express from "express";
 import { v4 as uuidv4 } from "uuid";
-import { getConnection } from "../config/database";
-import redisClient from "../config/redis";
-import { authenticateToken } from "../middleware/auth";
-import { generateOTP } from "../utils/otpGenerator";
-import { sendOTPEmail, sendConfirmationEmail } from "../utils/emailService";
+import pool, { getConnection } from "../config/database.js";
+import redisClient from "../config/redis.js";
+import { authenticateToken } from "../middleware/auth.js";
+import { generateOTP } from "../utils/otpGenerator.js";
+import { sendOTPEmail, sendConfirmationEmail } from "../utils/emailService.js";
 import { body, validationResult } from "express-validator";
 
-const router = Router();
+const router = express.Router();
 
 // Initiate payment
 router.post(
@@ -368,4 +368,4 @@ router.post(
   }
 );
 
-module.exports = router;
+export default router;
