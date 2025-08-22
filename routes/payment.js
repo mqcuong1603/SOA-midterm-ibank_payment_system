@@ -13,13 +13,21 @@ const router = express.Router();
 router.post(
   "/initiate",
   authenticateToken,
-  [
-    body("studentId").notEmpty().withMessage("Student ID is required"),
-    // Remove amount validation - it shouldn't come from client
-  ],
+  [body("studentId").notEmpty().withMessage("Student ID is required")],
   async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
     const { studentId } = req.body; // Only get studentId
     const userId = req.user.id;
+
+    // Additional validation to ensure userId exists
+    if (!userId) {
+      return res.status(401).json({ error: "User authentication required" });
+    }
+
     const connection = await getConnection();
 
     try {
@@ -71,7 +79,7 @@ router.post(
         transactionCode,
         studentId,
         studentName: students[0].full_name,
-        amount, // Return the amount for confirmation
+        amount,
         status: "pending",
       });
     } catch (error) {
@@ -94,8 +102,18 @@ router.post(
       .withMessage("Valid transaction ID required"),
   ],
   async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
     const { transactionId } = req.body;
     const userId = req.user.id;
+
+    // Additional validation to ensure userId exists
+    if (!userId) {
+      return res.status(401).json({ error: "User authentication required" });
+    }
 
     try {
       // Verify transaction belongs to user
@@ -157,12 +175,27 @@ router.post(
   "/verify-otp",
   authenticateToken,
   [
-    body("transactionId").isNumeric(),
-    body("otpCode").isLength({ min: 6, max: 6 }),
+    body("transactionId")
+      .notEmpty()
+      .isNumeric()
+      .withMessage("Transaction ID is required and must be numeric"),
+    body("otpCode")
+      .isLength({ min: 6, max: 6 })
+      .withMessage("OTP code must be exactly 6 characters"),
   ],
   async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
     const { transactionId, otpCode } = req.body;
     const userId = req.user.id;
+
+    // Additional validation to ensure userId exists
+    if (!userId) {
+      return res.status(401).json({ error: "User authentication required" });
+    }
 
     try {
       // Get OTP from database
@@ -226,10 +259,26 @@ router.post(
 router.post(
   "/confirm",
   authenticateToken,
-  [body("transactionId").isNumeric()],
+  [
+    body("transactionId")
+      .notEmpty()
+      .isNumeric()
+      .withMessage("Transaction ID is required and must be numeric"),
+  ],
   async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
     const { transactionId } = req.body;
     const userId = req.user.id;
+
+    // Additional validation to ensure userId exists
+    if (!userId) {
+      return res.status(401).json({ error: "User authentication required" });
+    }
+
     const connection = await pool.getConnection();
 
     try {
