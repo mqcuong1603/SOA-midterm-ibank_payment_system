@@ -15,22 +15,17 @@ router.post(
   authenticateToken,
   [
     body("studentId").notEmpty().withMessage("Student ID is required"),
-    body("amount").isNumeric().withMessage("Amount must be a number"),
+    // Remove amount validation - it shouldn't come from client
   ],
   async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
-
-    const { studentId, amount } = req.body;
+    const { studentId } = req.body; // Only get studentId
     const userId = req.user.id;
     const connection = await getConnection();
 
     try {
       await connection.beginTransaction();
 
-      // Check if student exists and not paid
+      // Get student info including tuition amount
       const [students] = await connection.execute(
         "SELECT * FROM students WHERE student_id = ? FOR UPDATE",
         [studentId]
@@ -46,6 +41,9 @@ router.post(
         return res.status(400).json({ error: "Tuition already paid" });
       }
 
+      // Use the tuition amount from database
+      const amount = parseFloat(students[0].tuition_amount);
+
       // Check user balance
       const [users] = await connection.execute(
         "SELECT balance FROM users WHERE id = ? FOR UPDATE",
@@ -57,7 +55,7 @@ router.post(
         return res.status(400).json({ error: "Insufficient balance" });
       }
 
-      // Create transaction
+      // Create transaction with amount from database
       const transactionCode =
         "TXN" + Date.now() + uuidv4().substring(0, 8).toUpperCase();
 
@@ -71,6 +69,9 @@ router.post(
       res.json({
         transactionId: result.insertId,
         transactionCode,
+        studentId,
+        studentName: students[0].full_name,
+        amount, // Return the amount for confirmation
         status: "pending",
       });
     } catch (error) {
