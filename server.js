@@ -29,6 +29,9 @@ app.use(cors());
 app.use(json());
 app.use(urlencoded({ extended: true }));
 
+// Serve static files from public directory
+app.use(express.static("public"));
+
 // Apply rate limiting
 app.use("/api/", limiter);
 
