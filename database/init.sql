@@ -102,11 +102,11 @@ CREATE TABLE IF NOT EXISTS transaction_locks (
 
 -- Insert sample data for testing
 
--- Insert test users (password is 'password123' hashed with bcrypt)
+-- Insert test users (password is '123456' hashed with bcrypt)
 INSERT INTO users (username, password_hash, full_name, phone, email, balance) VALUES
-('johndoe', '$2b$10$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW', 'John Doe', '0901234567', 'john.doe@email.com', 50000000.00),
-('janedoe', '$2b$10$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW', 'Jane Doe', '0907654321', 'jane.doe@email.com', 30000000.00),
-('testuser', '$2b$10$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW', 'Test User', '0909999999', 'test.user@email.com', 100000000.00);
+('johndoe', '$2b$10$STQPLLrUX8zr8YdXlMSdxOIJ2WMBZqjlxMhDKinP6y1xPhzbw0jua', 'John Doe', '0901234567', 'john.doe@email.com', 50000000.00),
+('janedoe', '$2b$10$STQPLLrUX8zr8YdXlMSdxOIJ2WMBZqjlxMhDKinP6y1xPhzbw0jua', 'Jane Doe', '0907654321', 'jane.doe@email.com', 30000000.00),
+('testuser', '$2b$10$STQPLLrUX8zr8YdXlMSdxOIJ2WMBZqjlxMhDKinP6y1xPhzbw0jua', 'Test User', '0909999999', 'test.user@email.com', 100000000.00);
 
 -- Insert test students
 INSERT INTO students (student_id, full_name, tuition_amount, is_paid, academic_year, semester, due_date) VALUES
