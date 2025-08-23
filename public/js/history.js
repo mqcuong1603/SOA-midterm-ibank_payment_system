@@ -1,0 +1,292 @@
+// History page JavaScript
+let currentPage = 1;
+let totalPages = 1;
+let currentFilter = "";
+const itemsPerPage = 10;
+
+document.addEventListener("DOMContentLoaded", () => {
+  checkAuth();
+  loadUserInfo();
+  loadHistory();
+
+  // Setup filter listener
+  document.getElementById("filterStatus").addEventListener("change", (e) => {
+    currentFilter = e.target.value;
+    currentPage = 1;
+    loadHistory();
+  });
+});
+
+function loadUserInfo() {
+  const user = JSON.parse(localStorage.getItem("user"));
+  if (user) {
+    document.getElementById("navUsername").textContent = user.fullName;
+  }
+}
+
+async function loadHistory() {
+  try {
+    const offset = (currentPage - 1) * itemsPerPage;
+
+    const params = {
+      limit: itemsPerPage,
+      offset: offset,
+    };
+
+    if (currentFilter) {
+      params.status = currentFilter;
+    }
+
+    const response = await API.transactions.getHistory(params);
+    const data = await response.json();
+
+    if (response.ok) {
+      displayTransactions(data.transactions);
+      setupPagination(data.total);
+    } else {
+      showError("Failed to load transaction history");
+    }
+  } catch (error) {
+    console.error("Error loading history:", error);
+    showError("Error loading transaction history");
+  }
+}
+
+function displayTransactions(transactions) {
+  const tbody = document.getElementById("historyTableBody");
+
+  if (!transactions || transactions.length === 0) {
+    tbody.innerHTML =
+      '<tr><td colspan="7" class="text-center">No transactions found</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = transactions
+    .map(
+      (transaction) => `
+        <tr>
+            <td><small>${transaction.transactionCode}</small></td>
+            <td>${transaction.studentId}</td>
+            <td>${transaction.studentName || "-"}</td>
+            <td>${formatCurrency(transaction.amount)}</td>
+            <td>${getStatusBadge(transaction.status)}</td>
+            <td>${formatDateTime(transaction.createdAt)}</td>
+            <td>
+                <button class="btn btn-sm btn-outline-primary" onclick="viewDetails('${
+                  transaction.transactionCode
+                }')">
+                    <i class="bi bi-eye"></i>
+                </button>
+                ${
+                  transaction.status === "completed"
+                    ? `<button class="btn btn-sm btn-outline-success" onclick="downloadReceipt('${transaction.transactionCode}')">
+                        <i class="bi bi-download"></i>
+                    </button>`
+                    : ""
+                }
+            </td>
+        </tr>
+    `
+    )
+    .join("");
+}
+
+function setupPagination(total) {
+  totalPages = Math.ceil(total / itemsPerPage);
+  const pagination = document.getElementById("pagination");
+
+  if (totalPages <= 1) {
+    pagination.innerHTML = "";
+    return;
+  }
+
+  let paginationHTML = "";
+
+  // Previous button
+  paginationHTML += `
+        <li class="page-item ${currentPage === 1 ? "disabled" : ""}">
+            <a class="page-link" href="#" onclick="changePage(${
+              currentPage - 1
+            })">Previous</a>
+        </li>
+    `;
+
+  // Page numbers
+  const maxVisiblePages = 5;
+  let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+  let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
+  if (endPage - startPage < maxVisiblePages - 1) {
+    startPage = Math.max(1, endPage - maxVisiblePages + 1);
+  }
+
+  for (let i = startPage; i <= endPage; i++) {
+    paginationHTML += `
+            <li class="page-item ${i === currentPage ? "active" : ""}">
+                <a class="page-link" href="#" onclick="changePage(${i})">${i}</a>
+            </li>
+        `;
+  }
+
+  // Next button
+  paginationHTML += `
+        <li class="page-item ${currentPage === totalPages ? "disabled" : ""}">
+            <a class="page-link" href="#" onclick="changePage(${
+              currentPage + 1
+            })">Next</a>
+        </li>
+    `;
+
+  pagination.innerHTML = paginationHTML;
+}
+
+function changePage(page) {
+  if (page < 1 || page > totalPages || page === currentPage) return;
+  currentPage = page;
+  loadHistory();
+}
+
+async function viewDetails(transactionCode) {
+  try {
+    const response = await API.transactions.getDetails(transactionCode);
+    const data = await response.json();
+
+    if (response.ok) {
+      // Create and show modal with transaction details
+      showTransactionModal(data);
+    } else {
+      showToast("Failed to load transaction details", "danger");
+    }
+  } catch (error) {
+    console.error("Error loading transaction details:", error);
+    showToast("Error loading transaction details", "danger");
+  }
+}
+
+function showTransactionModal(transaction) {
+  const modalHTML = `
+        <div class="modal fade" id="transactionModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Transaction Details</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <dl class="row">
+                            <dt class="col-sm-4">Transaction Code:</dt>
+                            <dd class="col-sm-8">${
+                              transaction.transactionCode
+                            }</dd>
+                            
+                            <dt class="col-sm-4">Student ID:</dt>
+                            <dd class="col-sm-8">${transaction.studentId}</dd>
+                            
+                            <dt class="col-sm-4">Student Name:</dt>
+                            <dd class="col-sm-8">${transaction.studentName}</dd>
+                            
+                            <dt class="col-sm-4">Amount:</dt>
+                            <dd class="col-sm-8">${formatCurrency(
+                              transaction.amount
+                            )}</dd>
+                            
+                            <dt class="col-sm-4">Status:</dt>
+                            <dd class="col-sm-8">${getStatusBadge(
+                              transaction.status
+                            )}</dd>
+                            
+                            <dt class="col-sm-4">Created:</dt>
+                            <dd class="col-sm-8">${formatDateTime(
+                              transaction.createdAt
+                            )}</dd>
+                            
+                            ${
+                              transaction.completedAt
+                                ? `
+                                <dt class="col-sm-4">Completed:</dt>
+                                <dd class="col-sm-8">${formatDateTime(
+                                  transaction.completedAt
+                                )}</dd>
+                            `
+                                : ""
+                            }
+                        </dl>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        ${
+                          transaction.status === "completed"
+                            ? `<button type="button" class="btn btn-primary" onclick="downloadReceipt('${transaction.transactionCode}')">
+                                Download Receipt
+                            </button>`
+                            : ""
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+  // Remove existing modal if any
+  const existingModal = document.getElementById("transactionModal");
+  if (existingModal) {
+    existingModal.remove();
+  }
+
+  // Add modal to body
+  document.body.insertAdjacentHTML("beforeend", modalHTML);
+
+  // Show modal
+  const modal = new bootstrap.Modal(
+    document.getElementById("transactionModal")
+  );
+  modal.show();
+}
+
+function downloadReceipt(transactionCode) {
+  // In a real application, this would generate a PDF or call an API endpoint
+  showToast(`Downloading receipt for ${transactionCode}...`, "info");
+
+  // Simulate download
+  setTimeout(() => {
+    showToast("Receipt downloaded successfully", "success");
+  }, 2000);
+}
+
+async function exportHistory() {
+  try {
+    // Fetch all transactions for export
+    const response = await API.transactions.getHistory({ limit: 1000 });
+    const data = await response.json();
+
+    if (response.ok && data.transactions) {
+      const exportData = data.transactions.map((t) => ({
+        "Transaction Code": t.transactionCode,
+        "Student ID": t.studentId,
+        "Student Name": t.studentName || "-",
+        Amount: t.amount,
+        Status: t.status,
+        Date: formatDateTime(t.createdAt),
+      }));
+
+      exportToCSV(
+        exportData,
+        `transaction_history_${new Date().toISOString().split("T")[0]}.csv`
+      );
+      showToast("History exported successfully", "success");
+    }
+  } catch (error) {
+    console.error("Error exporting history:", error);
+    showToast("Failed to export history", "danger");
+  }
+}
+
+function showError(message) {
+  const tbody = document.getElementById("historyTableBody");
+  tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger">${message}</td></tr>`;
+}
+
+function logout() {
+  localStorage.clear();
+  window.location.href = "index.html";
+}
