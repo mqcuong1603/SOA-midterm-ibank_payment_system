@@ -105,7 +105,8 @@ CREATE TABLE IF NOT EXISTS transaction_locks (
 -- Insert test users (password is '123456' hashed with bcrypt)
 INSERT INTO users (username, password_hash, full_name, phone, email, balance) VALUES
 ('johndoe', '$2b$10$STQPLLrUX8zr8YdXlMSdxOIJ2WMBZqjlxMhDKinP6y1xPhzbw0jua', 'John Doe', '0901234567', 'john.doe@email.com', 50000000.00),
-('mqcuong', '$2b$10$STQPLLrUX8zr8YdXlMSdxOIJ2WMBZqjlxMhDKinP6y1xPhzbw0jua', 'William Ma', '0901234567', 'cuongcfvipss5@gmail.com', 50000000.00),
+('williamma', '$2b$10$STQPLLrUX8zr8YdXlMSdxOIJ2WMBZqjlxMhDKinP6y1xPhzbw0jua', 'William Ma', '0901234567', 'cuongcfvipss5@gmail.com', 50000000.00),
+('mqcuong', '$2b$10$STQPLLrUX8zr8YdXlMSdxOIJ2WMBZqjlxMhDKinP6y1xPhzbw0jua', 'Cuong Ma', '0901234567', 'mqcuong1603@gmail.com', 50000000.00),
 ('janedoe', '$2b$10$STQPLLrUX8zr8YdXlMSdxOIJ2WMBZqjlxMhDKinP6y1xPhzbw0jua', 'Jane Doe', '0907654321', 'jane.doe@email.com', 30000000.00),
 ('testuser', '$2b$10$STQPLLrUX8zr8YdXlMSdxOIJ2WMBZqjlxMhDKinP6y1xPhzbw0jua', 'Test User', '0909999999', 'test.user@email.com', 100000000.00);
 
