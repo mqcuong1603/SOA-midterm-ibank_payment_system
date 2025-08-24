@@ -16,7 +16,7 @@ function initializeNavbar() {
 
 // Global function to load user info (can be called from other scripts)
 function loadUserInfo() {
-  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const user = JSON.parse(sessionStorage.getItem("user") || "{}");
   console.log("Navbar loading user data:", user); // Debug log
 
   const navUsernameEl = document.getElementById("navUsername");
@@ -47,18 +47,91 @@ function loadUserInfo() {
 }
 
 function showProfile() {
-  // Load fresh profile data and show modal
-  loadProfileData();
+  // Clear any existing profile data first
+  document.getElementById("profileFullName").textContent = "Loading...";
+  document.getElementById("profileUsername").textContent = "Loading...";
+  document.getElementById("profileEmail").textContent = "Loading...";
+  document.getElementById("profilePhone").textContent = "Loading...";
+  document.getElementById("profileBalance").textContent = "Loading...";
+
+  // Show modal immediately
   const modal = new bootstrap.Modal(document.getElementById("profileModal"));
   modal.show();
+
+  // Load fresh profile data
+  loadProfileData();
 }
 
 async function loadProfileData() {
   try {
-    const token = localStorage.getItem("token");
-    const user = JSON.parse(localStorage.getItem("user") || "{}");
+    const token = sessionStorage.getItem("token");
 
-    // Set basic info from localStorage first
+    if (!token) {
+      console.error("No token found");
+      return;
+    }
+
+    // Show loading state
+    document.getElementById("profileFullName").textContent = "Loading...";
+    document.getElementById("profileUsername").textContent = "Loading...";
+    document.getElementById("profileEmail").textContent = "Loading...";
+    document.getElementById("profilePhone").textContent = "Loading...";
+    document.getElementById("profileBalance").textContent = "Loading...";
+
+    // Fetch fresh data from API
+    const response = await fetch("/api/user/profile", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (response.ok) {
+      const profileData = await response.json();
+      console.log("Profile data loaded:", profileData); // Debug log
+
+      // Update sessionStorage with fresh data
+      const currentUser = JSON.parse(sessionStorage.getItem("user") || "{}");
+      const updatedUser = {
+        ...currentUser,
+        fullName: profileData.fullName,
+        email: profileData.email,
+        phone: profileData.phone,
+        balance: profileData.balance,
+      };
+      sessionStorage.setItem("user", JSON.stringify(updatedUser));
+
+      // Update profile modal
+      document.getElementById("profileFullName").textContent =
+        profileData.fullName || "N/A";
+      document.getElementById("profileUsername").textContent =
+        currentUser.username || "N/A";
+      document.getElementById("profileEmail").textContent =
+        profileData.email || "N/A";
+      document.getElementById("profilePhone").textContent =
+        profileData.phone || "N/A";
+      document.getElementById("profileBalance").textContent =
+        (profileData.balance || 0).toLocaleString() + " đ";
+
+      // Also update navbar if needed
+      loadUserInfo();
+    } else {
+      console.error("Failed to fetch profile:", response.status);
+      // Fall back to sessionStorage data
+      const user = JSON.parse(sessionStorage.getItem("user") || "{}");
+      document.getElementById("profileFullName").textContent =
+        user.fullName || "N/A";
+      document.getElementById("profileUsername").textContent =
+        user.username || "N/A";
+      document.getElementById("profileEmail").textContent = user.email || "N/A";
+      document.getElementById("profilePhone").textContent = user.phone || "N/A";
+      document.getElementById("profileBalance").textContent =
+        (user.balance || 0).toLocaleString() + " đ";
+    }
+  } catch (error) {
+    console.error("Error fetching profile data:", error);
+    // Fall back to sessionStorage data
+    const user = JSON.parse(sessionStorage.getItem("user") || "{}");
     document.getElementById("profileFullName").textContent =
       user.fullName || "N/A";
     document.getElementById("profileUsername").textContent =
@@ -67,32 +140,15 @@ async function loadProfileData() {
     document.getElementById("profilePhone").textContent = user.phone || "N/A";
     document.getElementById("profileBalance").textContent =
       (user.balance || 0).toLocaleString() + " đ";
-
-    // Fetch fresh data from API
-    const response = await fetch("/api/user/profile", {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    if (response.ok) {
-      const profileData = await response.json();
-      document.getElementById("profileFullName").textContent =
-        profileData.fullName || "N/A";
-      document.getElementById("profileEmail").textContent =
-        profileData.email || "N/A";
-      document.getElementById("profilePhone").textContent =
-        profileData.phone || "N/A";
-      document.getElementById("profileBalance").textContent =
-        (profileData.balance || 0).toLocaleString() + " đ";
-    }
-  } catch (error) {
-    console.error("Error fetching profile data:", error);
   }
 }
 
 function logout() {
-  localStorage.removeItem("token");
-  localStorage.removeItem("user");
+  // Clear all session data for this tab
+  sessionStorage.removeItem("token");
+  sessionStorage.removeItem("user");
+  sessionStorage.clear(); // Ensure everything is cleared
+
+  // Redirect to login page
   window.location.href = "index.html";
 }

@@ -176,7 +176,7 @@ function resetSessionTimeout() {
 }
 
 // Initialize session timeout on page load
-if (localStorage.getItem("token")) {
+if (sessionStorage.getItem("token")) {
   resetSessionTimeout();
 
   // Reset timeout on user activity
@@ -187,6 +187,6 @@ if (localStorage.getItem("token")) {
 
 // Common logout function
 function logout() {
-  localStorage.clear();
+  sessionStorage.clear();
   window.location.href = "index.html";
 }

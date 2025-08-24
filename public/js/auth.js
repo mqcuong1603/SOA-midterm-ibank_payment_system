@@ -16,8 +16,20 @@ document.getElementById("loginForm").addEventListener("submit", async (e) => {
     const data = await response.json();
 
     if (response.ok) {
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("user", JSON.stringify(data.user));
+      console.log("Login successful, storing user data:", data.user); // Debug log
+
+      // Clear any existing session data first
+      sessionStorage.clear();
+
+      // Store new user data in sessionStorage (tab-specific)
+      sessionStorage.setItem("token", data.token);
+      sessionStorage.setItem("user", JSON.stringify(data.user));
+
+      console.log(
+        "Stored user data:",
+        JSON.parse(sessionStorage.getItem("user"))
+      ); // Debug log
+
       window.location.href = "payment.html";
     } else {
       showAlert("loginAlert", data.error || "Login failed", "danger");

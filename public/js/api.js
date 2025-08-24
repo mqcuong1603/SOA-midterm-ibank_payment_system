@@ -3,7 +3,7 @@ const API_URL = "http://localhost:3000/api";
 
 // Main API call function with authentication
 async function apiCall(endpoint, method = "GET", body = null) {
-  const token = localStorage.getItem("token");
+  const token = sessionStorage.getItem("token");
 
   const options = {
     method,
@@ -27,7 +27,7 @@ async function apiCall(endpoint, method = "GET", body = null) {
 
     // Handle unauthorized access
     if (response.status === 401) {
-      localStorage.clear();
+      sessionStorage.clear();
       window.location.href = "index.html";
       return;
     }
@@ -41,7 +41,7 @@ async function apiCall(endpoint, method = "GET", body = null) {
 
 // Check if user is authenticated
 function checkAuth() {
-  const token = localStorage.getItem("token");
+  const token = sessionStorage.getItem("token");
   if (!token) {
     window.location.href = "index.html";
     return false;
@@ -49,15 +49,15 @@ function checkAuth() {
   return true;
 }
 
-// Get current user from localStorage
+// Get current user from sessionStorage
 function getCurrentUser() {
-  const userStr = localStorage.getItem("user");
+  const userStr = sessionStorage.getItem("user");
   return userStr ? JSON.parse(userStr) : null;
 }
 
-// Update user in localStorage
+// Update user in sessionStorage
 function updateStoredUser(user) {
-  localStorage.setItem("user", JSON.stringify(user));
+  sessionStorage.setItem("user", JSON.stringify(user));
 }
 
 // API endpoints wrapper functions
@@ -68,7 +68,7 @@ const API = {
       apiCall("/auth/login", "POST", { username, password }),
 
     logout: () => {
-      localStorage.clear();
+      sessionStorage.clear();
       window.location.href = "index.html";
     },
   },
