@@ -4,7 +4,97 @@ let otpTimer = null;
 document.addEventListener("DOMContentLoaded", () => {
   checkAuth();
   setupOTPInputs();
+
+  // Check if this is a resume operation
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get("resume") === "true") {
+    const transactionId = urlParams.get("transactionId");
+    const studentId = urlParams.get("studentId");
+
+    if (transactionId && studentId) {
+      resumePayment(transactionId, studentId);
+    }
+  } else {
+    // Check if user has an active transaction
+    checkForActiveTransaction();
+  }
 });
+
+async function checkForActiveTransaction() {
+  try {
+    const response = await apiCall("/payment/check-active");
+    const data = await response.json();
+
+    if (data.hasActiveTransaction) {
+      // Show alert about active transaction
+      const alertDiv = document.getElementById("paymentAlert");
+      alertDiv.className = "alert alert-warning mt-3";
+      alertDiv.innerHTML = `
+        <i class="bi bi-exclamation-triangle"></i>
+        <strong>Active Transaction Found!</strong> 
+        You have an incomplete payment for student ${data.transaction.studentId}. 
+        <button class="btn btn-sm btn-outline-primary ms-2" onclick="continueActiveTransaction('${data.transaction.id}', '${data.transaction.studentId}')">Continue Payment</button>
+        <button class="btn btn-sm btn-outline-danger ms-1" onclick="cancelActiveTransaction()">Cancel Transaction</button>
+      `;
+      alertDiv.classList.remove("d-none");
+
+      // Disable the form
+      document.getElementById("studentId").disabled = true;
+      document.getElementById("proceedBtn").disabled = true;
+    }
+  } catch (error) {
+    console.error("Error checking for active transaction:", error);
+  }
+}
+
+async function resumePayment(transactionId, studentId) {
+  try {
+    // Set the current transaction
+    currentTransaction = {
+      transactionId: parseInt(transactionId),
+      studentId: studentId,
+    };
+
+    // Get student information
+    const studentResponse = await apiCall(`/student/${studentId}`);
+    const studentData = await studentResponse.json();
+
+    if (studentResponse.ok) {
+      // Fill in student information
+      document.getElementById("studentId").value = studentId;
+      document.getElementById("studentName").value = studentData.studentName;
+      document.getElementById("tuitionAmount").value = formatCurrency(
+        studentData.tuitionAmount
+      );
+      document.getElementById("academicYear").value = studentData.academicYear;
+      document.getElementById(
+        "semester"
+      ).value = `Semester ${studentData.semester}`;
+
+      // Show OTP step directly
+      showStep(2);
+
+      // Check if there's an existing OTP and get remaining time
+      checkExistingOTP(transactionId);
+
+      // Show resume alert
+      const alertDiv = document.getElementById("paymentAlert");
+      alertDiv.className = "alert alert-info mt-3";
+      alertDiv.innerHTML = `
+        <i class="bi bi-info-circle"></i>
+        <strong>Resuming Payment</strong> for student ${studentId}. 
+        Check your email for the OTP or request a new one.
+      `;
+      alertDiv.classList.remove("d-none");
+    } else {
+      throw new Error("Failed to load student information");
+    }
+  } catch (error) {
+    console.error("Error resuming payment:", error);
+    alert("Error resuming payment. Please start a new payment.");
+    window.location.href = "/payment.html";
+  }
+}
 
 async function searchStudent() {
   const studentId = document.getElementById("studentId").value;
@@ -136,8 +226,8 @@ function setupOTPInputs() {
   });
 }
 
-function startOTPTimer() {
-  let seconds = 300;
+function startOTPTimer(initialSeconds = 300) {
+  let seconds = initialSeconds;
   otpTimer = setInterval(() => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -148,6 +238,7 @@ function startOTPTimer() {
     if (seconds === 0) {
       clearInterval(otpTimer);
       document.getElementById("otpTimer").textContent = "OTP Expired";
+      document.getElementById("verifyBtn").disabled = true;
     }
     seconds--;
   }, 1000);
@@ -271,5 +362,81 @@ function hideButtonLoading(buttonId, textId, loadingId) {
     button.disabled = false;
     textElement.classList.remove("d-none");
     loadingElement.classList.add("d-none");
+  }
+}
+
+// Helper functions for active transaction management
+async function checkExistingOTP(transactionId) {
+  try {
+    const response = await apiCall(`/payment/otp-status/${transactionId}`);
+    const data = await response.json();
+
+    if (data.hasOtp && !data.isExpired && data.remainingSeconds > 0) {
+      // Start timer with actual remaining time
+      console.log(
+        `Starting OTP timer with ${data.remainingSeconds} seconds remaining`
+      );
+      startOTPTimer(data.remainingSeconds);
+
+      // Update alert to show existing OTP
+      const alertDiv = document.getElementById("paymentAlert");
+      alertDiv.className = "alert alert-success mt-3";
+      alertDiv.innerHTML = `
+        <i class="bi bi-check-circle"></i>
+        <strong>Active OTP Found!</strong> 
+        Check your email for the OTP code. Time remaining: <span class="fw-bold">${Math.floor(
+          data.remainingSeconds / 60
+        )}:${(data.remainingSeconds % 60).toString().padStart(2, "0")}</span>
+      `;
+    } else {
+      // No valid OTP, user needs to request new one
+      document.getElementById("otpTimer").textContent = "No active OTP";
+      const alertDiv = document.getElementById("paymentAlert");
+      alertDiv.className = "alert alert-warning mt-3";
+      alertDiv.innerHTML = `
+        <i class="bi bi-exclamation-triangle"></i>
+        <strong>No Active OTP</strong> 
+        Please request a new OTP to continue.
+      `;
+    }
+  } catch (error) {
+    console.error("Error checking OTP status:", error);
+    // Fallback to requesting new OTP
+    document.getElementById("otpTimer").textContent = "Request OTP";
+  }
+}
+
+function continueActiveTransaction(transactionId, studentId) {
+  const params = new URLSearchParams({
+    resume: "true",
+    transactionId: transactionId,
+    studentId: studentId,
+  });
+
+  window.location.href = `/payment.html?${params.toString()}`;
+}
+
+async function cancelActiveTransaction() {
+  if (
+    !confirm(
+      "Are you sure you want to cancel your active transaction? This action cannot be undone."
+    )
+  ) {
+    return;
+  }
+
+  try {
+    const response = await apiCall("/payment/cancel-active", "DELETE");
+    const data = await response.json();
+
+    if (data.success) {
+      alert("Transaction cancelled successfully!");
+      window.location.reload();
+    } else {
+      alert("Failed to cancel transaction: " + data.message);
+    }
+  } catch (error) {
+    console.error("Error cancelling transaction:", error);
+    alert("Error cancelling transaction");
   }
 }

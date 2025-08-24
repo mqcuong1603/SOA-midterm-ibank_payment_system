@@ -33,6 +33,43 @@ router.post(
     try {
       await connection.beginTransaction();
 
+      // Check for existing locks on this student's tuition
+      console.log(
+        `🔍 Checking for existing locks on student ${studentId} and user ${userId}...`
+      );
+      const [existingStudentLocks] = await connection.execute(
+        "SELECT * FROM transaction_locks WHERE resource_type = 'student_tuition' AND resource_id = ? AND expires_at > NOW()",
+        [studentId]
+      );
+
+      if (existingStudentLocks.length > 0) {
+        await connection.rollback();
+        console.log(
+          `❌ Payment blocked: Student ${studentId} already has active transaction lock`
+        );
+        return res.status(409).json({
+          error:
+            "Another payment is already in progress for this student. Please try again later.",
+        });
+      }
+
+      // Check for existing locks on this user's account
+      const [existingUserLocks] = await connection.execute(
+        "SELECT * FROM transaction_locks WHERE resource_type = 'user_account' AND resource_id = ? AND expires_at > NOW()",
+        [userId.toString()]
+      );
+
+      if (existingUserLocks.length > 0) {
+        await connection.rollback();
+        console.log(
+          `❌ Payment blocked: User ${userId} already has active transaction lock`
+        );
+        return res.status(409).json({
+          error:
+            "You already have a payment in progress. Please complete or wait for it to expire.",
+        });
+      }
+
       // Get student info including tuition amount
       const [students] = await connection.execute(
         "SELECT * FROM students WHERE student_id = ? FOR UPDATE",
@@ -72,10 +109,49 @@ router.post(
         [transactionCode, userId, studentId, amount, "pending"]
       );
 
+      const transactionId = result.insertId;
+
+      // Create initial locks to prevent concurrent payments for same student
+      console.log(
+        `🔒 Creating initial locks for transaction ${transactionId}...`
+      );
+      try {
+        // Lock 1: Student tuition lock (prevents multiple payments for same student)
+        await connection.execute(
+          "INSERT INTO transaction_locks (resource_type, resource_id, transaction_id, expires_at) VALUES (?, ?, ?, ?)",
+          [
+            "student_tuition",
+            studentId,
+            transactionId,
+            new Date(Date.now() + 10 * 60 * 1000), // 10 minutes lock
+          ]
+        );
+        console.log(`✅ Student lock created for student ${studentId}`);
+
+        // Lock 2: User account lock (prevents same user from making multiple payments)
+        await connection.execute(
+          "INSERT INTO transaction_locks (resource_type, resource_id, transaction_id, expires_at) VALUES (?, ?, ?, ?)",
+          [
+            "user_account",
+            userId.toString(),
+            transactionId,
+            new Date(Date.now() + 10 * 60 * 1000), // 10 minutes lock
+          ]
+        );
+        console.log(`✅ User account lock created for user ${userId}`);
+      } catch (lockError) {
+        await connection.rollback();
+        console.log(`❌ Failed to create locks:`, lockError.message);
+        return res.status(409).json({
+          error:
+            "Another payment is already in progress. Please try again later.",
+        });
+      }
+
       await connection.commit();
 
       res.json({
-        transactionId: result.insertId,
+        transactionId: transactionId,
         transactionCode,
         studentId,
         studentName: students[0].full_name,
@@ -126,6 +202,31 @@ router.post(
         return res
           .status(404)
           .json({ error: "Transaction not found or invalid" });
+      }
+
+      const transaction = transactions[0];
+
+      // Check if locks still exist for this transaction (verify transaction is still valid)
+      console.log(
+        `🔍 Verifying locks exist for student ${transaction.student_id} and user ${userId} before sending OTP...`
+      );
+      const [studentLockCheck] = await pool.execute(
+        "SELECT * FROM transaction_locks WHERE resource_type = 'student_tuition' AND resource_id = ? AND transaction_id = ? AND expires_at > NOW()",
+        [transaction.student_id, transactionId]
+      );
+
+      const [userLockCheck] = await pool.execute(
+        "SELECT * FROM transaction_locks WHERE resource_type = 'user_account' AND resource_id = ? AND transaction_id = ? AND expires_at > NOW()",
+        [userId.toString(), transactionId]
+      );
+
+      if (studentLockCheck.length === 0 || userLockCheck.length === 0) {
+        console.log(
+          `❌ Locks expired or missing for student ${transaction.student_id} or user ${userId}`
+        );
+        return res.status(409).json({
+          error: "Transaction session has expired. Please start a new payment.",
+        });
       }
 
       // Generate OTP
@@ -299,33 +400,31 @@ router.post(
 
       const transaction = transactions[0];
 
-      // Try to acquire locks
-      try {
-        await connection.execute(
-          "INSERT INTO transaction_locks (resource_type, resource_id, transaction_id, expires_at) VALUES (?, ?, ?, ?)",
-          [
-            "user_account",
-            userId.toString(),
-            transactionId,
-            new Date(Date.now() + 5 * 60 * 1000),
-          ]
-        );
+      // Verify existing locks (don't create new ones)
+      console.log(
+        `🔍 Verifying existing locks for transaction ${transactionId}...`
+      );
+      const [userLock] = await connection.execute(
+        "SELECT * FROM transaction_locks WHERE resource_type = 'user_account' AND resource_id = ? AND transaction_id = ? AND expires_at > NOW()",
+        [userId.toString(), transactionId]
+      );
 
-        await connection.execute(
-          "INSERT INTO transaction_locks (resource_type, resource_id, transaction_id, expires_at) VALUES (?, ?, ?, ?)",
-          [
-            "student_tuition",
-            transaction.student_id,
-            transactionId,
-            new Date(Date.now() + 5 * 60 * 1000),
-          ]
-        );
-      } catch (lockError) {
+      const [studentLock] = await connection.execute(
+        "SELECT * FROM transaction_locks WHERE resource_type = 'student_tuition' AND resource_id = ? AND transaction_id = ? AND expires_at > NOW()",
+        [transaction.student_id, transactionId]
+      );
+
+      if (userLock.length === 0 || studentLock.length === 0) {
         await connection.rollback();
+        console.log(
+          `❌ Missing or expired locks for transaction ${transactionId}`
+        );
         return res.status(409).json({
-          error: "Another transaction is in progress. Please try again.",
+          error: "Transaction session has expired. Please start a new payment.",
         });
       }
+
+      console.log(`✅ Locks verified for transaction ${transactionId}`);
 
       // Get current balance
       const [users] = await connection.execute(
@@ -414,6 +513,153 @@ router.post(
       res.status(500).json({ error: "Server error" });
     } finally {
       connection.release();
+    }
+  }
+);
+
+// Check for user's active transaction
+router.get("/check-active", authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // Get user's current lock
+    const [userLocks] = await pool.execute(
+      `
+        SELECT tl.*, t.transaction_code, t.status, t.student_id, s.full_name as student_name
+        FROM transaction_locks tl
+        JOIN transactions t ON tl.transaction_id = t.id
+        LEFT JOIN students s ON t.student_id = s.student_id
+        WHERE tl.resource_type = 'user_account' 
+          AND tl.resource_id = ? 
+          AND tl.expires_at > NOW()
+      `,
+      [userId.toString()]
+    );
+
+    if (userLocks.length === 0) {
+      return res.json({
+        hasActiveTransaction: false,
+        message: "No active transaction found",
+      });
+    }
+
+    const lock = userLocks[0];
+    res.json({
+      hasActiveTransaction: true,
+      transaction: {
+        id: lock.transaction_id,
+        code: lock.transaction_code,
+        status: lock.status,
+        studentId: lock.student_id,
+        studentName: lock.student_name,
+        lockedAt: lock.locked_at,
+        expiresAt: lock.expires_at,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching user transaction:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// Cancel user's current transaction
+router.delete("/cancel-active", authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
+
+      // Get user's current transaction
+      const [userLocks] = await connection.execute(
+        `
+          SELECT transaction_id FROM transaction_locks 
+          WHERE resource_type = 'user_account' 
+            AND resource_id = ? 
+            AND expires_at > NOW()
+        `,
+        [userId.toString()]
+      );
+
+      if (userLocks.length === 0) {
+        await connection.rollback();
+        return res.json({ message: "No active transaction to cancel" });
+      }
+
+      const transactionId = userLocks[0].transaction_id;
+
+      // Delete all locks for this transaction
+      await connection.execute(
+        "DELETE FROM transaction_locks WHERE transaction_id = ?",
+        [transactionId]
+      );
+
+      // Update transaction status to cancelled
+      await connection.execute(
+        "UPDATE transactions SET status = 'cancelled' WHERE id = ?",
+        [transactionId]
+      );
+
+      await connection.commit();
+
+      console.log(
+        `🗑️ Transaction ${transactionId} cancelled by user ${userId}`
+      );
+      res.json({
+        success: true,
+        message: `Transaction ${transactionId} has been cancelled`,
+        transactionId: transactionId,
+      });
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
+  } catch (error) {
+    console.error("Error cancelling transaction:", error);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// Get OTP status and remaining time
+router.get(
+  "/otp-status/:transactionId",
+  authenticateToken,
+  async (req, res) => {
+    try {
+      const { transactionId } = req.params;
+      const userId = req.user.id;
+
+      // Get the latest OTP for this transaction
+      const [otpCodes] = await pool.execute(
+        "SELECT * FROM otp_codes WHERE transaction_id = ? AND email = ? ORDER BY created_at DESC LIMIT 1",
+        [transactionId, req.user.email]
+      );
+
+      if (otpCodes.length === 0) {
+        return res.json({
+          hasOtp: false,
+          message: "No OTP found for this transaction",
+        });
+      }
+
+      const otp = otpCodes[0];
+      const now = new Date();
+      const expiresAt = new Date(otp.expires_at);
+      const remainingMs = expiresAt.getTime() - now.getTime();
+      const remainingSeconds = Math.max(0, Math.floor(remainingMs / 1000));
+
+      res.json({
+        hasOtp: true,
+        remainingSeconds: remainingSeconds,
+        expiresAt: expiresAt.toISOString(),
+        isExpired: remainingSeconds <= 0,
+      });
+    } catch (error) {
+      console.error("Error getting OTP status:", error);
+      res.status(500).json({ error: "Server error" });
     }
   }
 );
