@@ -6,7 +6,6 @@ const itemsPerPage = 10;
 
 document.addEventListener("DOMContentLoaded", () => {
   checkAuth();
-  loadUserInfo();
   loadHistory();
 
   // Setup filter listener
@@ -17,14 +16,10 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 });
 
-function loadUserInfo() {
-  const user = JSON.parse(localStorage.getItem("user"));
-  if (user) {
-    document.getElementById("navUsername").textContent = user.fullName;
-  }
-}
+// Remove loadUserInfo from here since navbar.js handles it
 
 async function loadHistory() {
+  console.log("Loading transaction history..."); // Debug log
   try {
     const offset = (currentPage - 1) * itemsPerPage;
 
@@ -37,13 +32,18 @@ async function loadHistory() {
       params.status = currentFilter;
     }
 
+    console.log("API params:", params); // Debug log
     const response = await API.transactions.getHistory(params);
+    console.log("API response status:", response.status); // Debug log
+
     const data = await response.json();
+    console.log("API response data:", data); // Debug log
 
     if (response.ok) {
       displayTransactions(data.transactions);
       setupPagination(data.total);
     } else {
+      console.error("API error:", data); // Debug log
       showError("Failed to load transaction history");
     }
   } catch (error) {

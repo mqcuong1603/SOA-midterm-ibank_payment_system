@@ -18,7 +18,7 @@ document.getElementById("loginForm").addEventListener("submit", async (e) => {
     if (response.ok) {
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
-      window.location.href = "dashboard.html";
+      window.location.href = "payment.html";
     } else {
       showAlert("loginAlert", data.error || "Login failed", "danger");
     }
