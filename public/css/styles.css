@@ -33,7 +33,11 @@ body {
 
 /* Profile Modal Enhancements */
 .profile-modal .modal-gradient-header {
-  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+  background: linear-gradient(
+    135deg,
+    var(--primary-color),
+    var(--secondary-color)
+  );
   color: #fff;
   border-top-left-radius: 0.6rem;
   border-top-right-radius: 0.6rem;
@@ -49,7 +53,7 @@ body {
   font-size: 4rem;
   color: var(--primary-color);
   position: relative;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
 }
 .balance-card {
   background: #fff;
@@ -60,12 +64,12 @@ body {
 .info-item .label {
   font-size: 0.75rem;
   text-transform: uppercase;
-  letter-spacing: .5px;
+  letter-spacing: 0.5px;
   font-weight: 600;
   color: #6c757d;
 }
 .info-item .value {
-  font-size: .98rem;
+  font-size: 0.98rem;
   font-weight: 500;
   color: #212529;
 }
@@ -87,8 +91,19 @@ body {
   margin: 0 auto 1rem;
   font-size: 2rem;
 }
-.app-modal-icon.info { background: #e3f2fd; color: #0d6efd; }
-.app-modal-icon.success { background: #e8f9f1; color: #198754; }
-.app-modal-icon.warning { background: #fff4e5; color: #fd7e14; }
-.app-modal-icon.danger { background: #fbe9ea; color: #dc3545; }
-
+.app-modal-icon.info {
+  background: #e3f2fd;
+  color: #0d6efd;
+}
+.app-modal-icon.success {
+  background: #e8f9f1;
+  color: #198754;
+}
+.app-modal-icon.warning {
+  background: #fff4e5;
+  color: #fd7e14;
+}
+.app-modal-icon.danger {
+  background: #fbe9ea;
+  color: #dc3545;
+}

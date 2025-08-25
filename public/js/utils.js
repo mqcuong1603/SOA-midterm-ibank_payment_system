@@ -219,7 +219,15 @@ function logout() {
   document.body.insertAdjacentHTML("beforeend", modalHtml);
 })();
 
-function appModalBase({ title = "Message", message = "", type = "info", showCancel = false, confirmText = "OK", cancelText = "Cancel", autoCloseMs = 0 }) {
+function appModalBase({
+  title = "Message",
+  message = "",
+  type = "info",
+  showCancel = false,
+  confirmText = "OK",
+  cancelText = "Cancel",
+  autoCloseMs = 0,
+}) {
   const modalEl = document.getElementById("appMessageModal");
   const titleEl = document.getElementById("appModalTitle");
   const messageEl = document.getElementById("appModalMessage");
@@ -230,12 +238,13 @@ function appModalBase({ title = "Message", message = "", type = "info", showCanc
   titleEl.textContent = title;
   messageEl.textContent = message;
   iconWrap.className = `app-modal-icon ${type}`;
-  iconWrap.innerHTML = {
-    info: '<i class="bi bi-info-circle"></i>',
-    success: '<i class="bi bi-check-circle"></i>',
-    warning: '<i class="bi bi-exclamation-triangle"></i>',
-    danger: '<i class="bi bi-x-circle"></i>'
-  }[type] || '<i class="bi bi-info-circle"></i>';
+  iconWrap.innerHTML =
+    {
+      info: '<i class="bi bi-info-circle"></i>',
+      success: '<i class="bi bi-check-circle"></i>',
+      warning: '<i class="bi bi-exclamation-triangle"></i>',
+      danger: '<i class="bi bi-x-circle"></i>',
+    }[type] || '<i class="bi bi-info-circle"></i>';
   iconWrap.classList.remove("d-none");
 
   cancelBtn.style.display = showCancel ? "inline-block" : "none";
@@ -249,14 +258,25 @@ function appModalBase({ title = "Message", message = "", type = "info", showCanc
       cancelBtn.removeEventListener("click", onCancel);
       modalEl.removeEventListener("hidden.bs.modal", onHidden);
     };
-    const onOk = () => { resolve(true); bsModal.hide(); };
-    const onCancel = () => { resolve(false); };
+    const onOk = () => {
+      resolve(true);
+      bsModal.hide();
+    };
+    const onCancel = () => {
+      resolve(false);
+    };
     const onHidden = () => cleanup();
     okBtn.addEventListener("click", onOk);
     cancelBtn.addEventListener("click", onCancel);
     modalEl.addEventListener("hidden.bs.modal", onHidden);
     bsModal.show();
-    if (autoCloseMs > 0) setTimeout(() => { if (modalEl.classList.contains("show")) { resolve(true); bsModal.hide(); } }, autoCloseMs);
+    if (autoCloseMs > 0)
+      setTimeout(() => {
+        if (modalEl.classList.contains("show")) {
+          resolve(true);
+          bsModal.hide();
+        }
+      }, autoCloseMs);
   });
 }
 
@@ -265,14 +285,23 @@ function appAlert(message, options = {}) {
 }
 
 function appConfirm(message, options = {}) {
-  return appModalBase({ message, ...options, showCancel: true, confirmText: options.confirmText || "Yes", cancelText: options.cancelText || "No" });
+  return appModalBase({
+    message,
+    ...options,
+    showCancel: true,
+    confirmText: options.confirmText || "Yes",
+    cancelText: options.cancelText || "No",
+  });
 }
 
 // Replace native alert/confirm wrappers (optional)
 window.alert = (msg) => appAlert(msg);
 window.confirm = (msg) => {
   // Return a boolean synchronously via deprecation warning? We'll return false immediately & use async variant where refactored.
-  console.warn("Synchronous confirm() overridden. Use appConfirm(). Returning false. Message:", msg);
+  console.warn(
+    "Synchronous confirm() overridden. Use appConfirm(). Returning false. Message:",
+    msg
+  );
   return false;
 };
 

@@ -91,7 +91,9 @@ async function resumePayment(transactionId, studentId) {
     }
   } catch (error) {
     console.error("Error resuming payment:", error);
-    appAlert("Error resuming payment. Please start a new payment.", { type: "danger" }).then(() => {
+    appAlert("Error resuming payment. Please start a new payment.", {
+      type: "danger",
+    }).then(() => {
       window.location.href = "/payment.html";
     });
   }
@@ -101,7 +103,7 @@ async function searchStudent() {
   const studentId = document.getElementById("studentId").value;
 
   if (!studentId) {
-  appAlert("Please enter a student ID", { type: "warning" });
+    appAlert("Please enter a student ID", { type: "warning" });
     return;
   }
 
@@ -120,7 +122,7 @@ async function searchStudent() {
       document.getElementById("proceedBtn").disabled = !e.target.checked;
     });
   } else {
-  appAlert(data.error || "Student not found", { type: "danger" });
+    appAlert(data.error || "Student not found", { type: "danger" });
   }
 }
 
@@ -147,14 +149,14 @@ async function proceedToOTP() {
         startOTPTimer();
       } else {
         const otpData = await otpResponse.json();
-  appAlert(otpData.error || "Failed to send OTP", { type: "danger" });
+        appAlert(otpData.error || "Failed to send OTP", { type: "danger" });
       }
     } else {
-  appAlert(data.error || "Payment initiation failed", { type: "danger" });
+      appAlert(data.error || "Payment initiation failed", { type: "danger" });
     }
   } catch (error) {
     console.error("Payment initiation error:", error);
-  appAlert("An error occurred. Please try again.", { type: "danger" });
+    appAlert("An error occurred. Please try again.", { type: "danger" });
   } finally {
     // Hide loading state
     hideButtonLoading("proceedBtn", "proceedBtnText", "proceedBtnLoading");
@@ -247,7 +249,7 @@ function startOTPTimer(initialSeconds = 300) {
 
 async function resendOTP() {
   if (!currentTransaction) {
-  appAlert("No active transaction found", { type: "warning" });
+    appAlert("No active transaction found", { type: "warning" });
     return;
   }
 
@@ -267,14 +269,17 @@ async function resendOTP() {
       });
       document.querySelector(".otp-input").focus();
 
-  appAlert("OTP resent successfully!", { type: "success", autoCloseMs: 1500 });
+      appAlert("OTP resent successfully!", {
+        type: "success",
+        autoCloseMs: 1500,
+      });
     } else {
       const data = await response.json();
-  appAlert(data.error || "Failed to resend OTP", { type: "danger" });
+      appAlert(data.error || "Failed to resend OTP", { type: "danger" });
     }
   } catch (error) {
     console.error("Resend OTP error:", error);
-  appAlert("An error occurred. Please try again.", { type: "danger" });
+    appAlert("An error occurred. Please try again.", { type: "danger" });
   }
 }
 
@@ -285,7 +290,7 @@ async function verifyOTP() {
     .join("");
 
   if (otp.length !== 6) {
-  appAlert("Please enter complete OTP", { type: "warning" });
+    appAlert("Please enter complete OTP", { type: "warning" });
     return;
   }
 
@@ -309,11 +314,11 @@ async function verifyOTP() {
       showStep(3);
     } else {
       const data = await response.json();
-  appAlert(data.error || "Invalid OTP", { type: "danger" });
+      appAlert(data.error || "Invalid OTP", { type: "danger" });
     }
   } catch (error) {
     console.error("OTP verification error:", error);
-  appAlert("An error occurred. Please try again.", { type: "danger" });
+    appAlert("An error occurred. Please try again.", { type: "danger" });
   } finally {
     // Hide loading state
     hideButtonLoading("verifyBtn", "verifyBtnText", "verifyBtnLoading");
@@ -328,11 +333,13 @@ async function confirmPayment() {
   const data = await response.json();
 
   if (response.ok) {
-    appAlert("Payment successful!", { type: "success", title: "Success" }).then(() => {
-      window.location.href = "history.html";
-    });
+    appAlert("Payment successful!", { type: "success", title: "Success" }).then(
+      () => {
+        window.location.href = "history.html";
+      }
+    );
   } else {
-  appAlert(data.error || "Payment failed", { type: "danger" });
+    appAlert(data.error || "Payment failed", { type: "danger" });
   }
 }
 
@@ -432,9 +439,14 @@ async function cancelActiveTransaction() {
       const data = await response.json();
 
       if (data.success) {
-        appAlert("Transaction cancelled successfully!", { type: "success", autoCloseMs: 1500 }).then(() => window.location.reload());
+        appAlert("Transaction cancelled successfully!", {
+          type: "success",
+          autoCloseMs: 1500,
+        }).then(() => window.location.reload());
       } else {
-        appAlert("Failed to cancel transaction: " + data.message, { type: "danger" });
+        appAlert("Failed to cancel transaction: " + data.message, {
+          type: "danger",
+        });
       }
     } catch (error) {
       console.error("Error cancelling transaction:", error);

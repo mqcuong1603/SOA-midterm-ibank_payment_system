@@ -66,7 +66,11 @@
           <i class="bi bi-person-badge fs-4"></i>
           <span>Profile Information</span>
         </h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        <button
+          type="button"
+          class="btn-close btn-close-white"
+          data-bs-dismiss="modal"
+        ></button>
       </div>
       <div class="modal-body p-4">
         <div class="row g-4">
@@ -76,41 +80,57 @@
             </div>
             <div class="balance-card shadow-sm">
               <div class="small text-muted mb-1">Account Balance</div>
-              <div id="profileBalance" class="h4 text-success mb-0">Loading...</div>
+              <div id="profileBalance" class="h4 text-success mb-0">
+                Loading...
+              </div>
             </div>
           </div>
           <div class="col-md-8">
             <div class="row g-3">
               <div class="col-sm-6">
                 <div class="info-item">
-                  <div class="label"><i class="bi bi-person me-1 text-primary"></i> Full Name</div>
+                  <div class="label">
+                    <i class="bi bi-person me-1 text-primary"></i> Full Name
+                  </div>
                   <div id="profileFullName" class="value">Loading...</div>
                 </div>
               </div>
               <div class="col-sm-6">
                 <div class="info-item">
-                  <div class="label"><i class="bi bi-at me-1 text-primary"></i> Username</div>
+                  <div class="label">
+                    <i class="bi bi-at me-1 text-primary"></i> Username
+                  </div>
                   <div id="profileUsername" class="value">Loading...</div>
                 </div>
               </div>
               <div class="col-sm-6">
                 <div class="info-item">
-                  <div class="label"><i class="bi bi-envelope me-1 text-primary"></i> Email</div>
+                  <div class="label">
+                    <i class="bi bi-envelope me-1 text-primary"></i> Email
+                  </div>
                   <div id="profileEmail" class="value">Loading...</div>
                 </div>
               </div>
               <div class="col-sm-6">
                 <div class="info-item">
-                  <div class="label"><i class="bi bi-telephone me-1 text-primary"></i> Phone</div>
+                  <div class="label">
+                    <i class="bi bi-telephone me-1 text-primary"></i> Phone
+                  </div>
                   <div id="profilePhone" class="value">Loading...</div>
                 </div>
               </div>
             </div>
             <div class="mt-4 d-flex gap-2 flex-wrap">
-              <button class="btn btn-outline-primary btn-sm" onclick="loadProfileData()">
+              <button
+                class="btn btn-outline-primary btn-sm"
+                onclick="loadProfileData()"
+              >
                 <i class="bi bi-arrow-clockwise"></i> Refresh
               </button>
-              <button class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">
+              <button
+                class="btn btn-outline-secondary btn-sm"
+                data-bs-dismiss="modal"
+              >
                 <i class="bi bi-x-circle"></i> Close
               </button>
             </div>
