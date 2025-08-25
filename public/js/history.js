@@ -1,19 +1,11 @@
 // History page JavaScript
 let currentPage = 1;
 let totalPages = 1;
-let currentFilter = "";
 const itemsPerPage = 10;
 
 document.addEventListener("DOMContentLoaded", () => {
   checkAuth();
   loadHistory();
-
-  // Setup filter listener
-  document.getElementById("filterStatus").addEventListener("change", (e) => {
-    currentFilter = e.target.value;
-    currentPage = 1;
-    loadHistory();
-  });
 });
 
 // Remove loadUserInfo from here since navbar.js handles it
@@ -27,10 +19,6 @@ async function loadHistory() {
       limit: itemsPerPage,
       offset: offset,
     };
-
-    if (currentFilter) {
-      params.status = currentFilter;
-    }
 
     console.log("API params:", params); // Debug log
     const response = await API.transactions.getHistory(params);
@@ -57,7 +45,7 @@ function displayTransactions(transactions) {
 
   if (!transactions || transactions.length === 0) {
     tbody.innerHTML =
-      '<tr><td colspan="7" class="text-center">No transactions found</td></tr>';
+      '<tr><td colspan="6" class="text-center">No transactions found</td></tr>';
     return;
   }
 
@@ -71,20 +59,6 @@ function displayTransactions(transactions) {
             <td>${formatCurrency(transaction.amount)}</td>
             <td>${getStatusBadge(transaction.status)}</td>
             <td>${formatDateTime(transaction.createdAt)}</td>
-            <td>
-                <button class="btn btn-sm btn-outline-primary" onclick="viewDetails('${
-                  transaction.transactionCode
-                }')">
-                    <i class="bi bi-eye"></i>
-                </button>
-                ${
-                  transaction.status === "completed"
-                    ? `<button class="btn btn-sm btn-outline-success" onclick="downloadReceipt('${transaction.transactionCode}')">
-                        <i class="bi bi-download"></i>
-                    </button>`
-                    : ""
-                }
-            </td>
         </tr>
     `
     )
@@ -146,113 +120,6 @@ function changePage(page) {
   loadHistory();
 }
 
-async function viewDetails(transactionCode) {
-  try {
-    const response = await API.transactions.getDetails(transactionCode);
-    const data = await response.json();
-
-    if (response.ok) {
-      // Create and show modal with transaction details
-      showTransactionModal(data);
-    } else {
-      showToast("Failed to load transaction details", "danger");
-    }
-  } catch (error) {
-    console.error("Error loading transaction details:", error);
-    showToast("Error loading transaction details", "danger");
-  }
-}
-
-function showTransactionModal(transaction) {
-  const modalHTML = `
-        <div class="modal fade" id="transactionModal" tabindex="-1">
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title">Transaction Details</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                        <dl class="row">
-                            <dt class="col-sm-4">Transaction Code:</dt>
-                            <dd class="col-sm-8">${
-                              transaction.transactionCode
-                            }</dd>
-                            
-                            <dt class="col-sm-4">Student ID:</dt>
-                            <dd class="col-sm-8">${transaction.studentId}</dd>
-                            
-                            <dt class="col-sm-4">Student Name:</dt>
-                            <dd class="col-sm-8">${transaction.studentName}</dd>
-                            
-                            <dt class="col-sm-4">Amount:</dt>
-                            <dd class="col-sm-8">${formatCurrency(
-                              transaction.amount
-                            )}</dd>
-                            
-                            <dt class="col-sm-4">Status:</dt>
-                            <dd class="col-sm-8">${getStatusBadge(
-                              transaction.status
-                            )}</dd>
-                            
-                            <dt class="col-sm-4">Created:</dt>
-                            <dd class="col-sm-8">${formatDateTime(
-                              transaction.createdAt
-                            )}</dd>
-                            
-                            ${
-                              transaction.completedAt
-                                ? `
-                                <dt class="col-sm-4">Completed:</dt>
-                                <dd class="col-sm-8">${formatDateTime(
-                                  transaction.completedAt
-                                )}</dd>
-                            `
-                                : ""
-                            }
-                        </dl>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                        ${
-                          transaction.status === "completed"
-                            ? `<button type="button" class="btn btn-primary" onclick="downloadReceipt('${transaction.transactionCode}')">
-                                Download Receipt
-                            </button>`
-                            : ""
-                        }
-                    </div>
-                </div>
-            </div>
-        </div>
-    `;
-
-  // Remove existing modal if any
-  const existingModal = document.getElementById("transactionModal");
-  if (existingModal) {
-    existingModal.remove();
-  }
-
-  // Add modal to body
-  document.body.insertAdjacentHTML("beforeend", modalHTML);
-
-  // Show modal
-  const modal = new bootstrap.Modal(
-    document.getElementById("transactionModal")
-  );
-  modal.show();
-}
-
-function downloadReceipt(transactionCode) {
-  // In a real application, this would generate a PDF or call an API endpoint
-  showToast(`Downloading receipt for ${transactionCode}...`, "info");
-
-  // Simulate download
-  setTimeout(() => {
-    showToast("Receipt downloaded successfully", "success");
-  }, 2000);
-}
-
 async function exportHistory() {
   try {
     // Fetch all transactions for export
@@ -283,7 +150,7 @@ async function exportHistory() {
 
 function showError(message) {
   const tbody = document.getElementById("historyTableBody");
-  tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger">${message}</td></tr>`;
+  tbody.innerHTML = `<tr><td colspan="6" class="text-center text-danger">${message}</td></tr>`;
 }
 
 function logout() {
