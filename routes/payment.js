@@ -299,7 +299,69 @@ router.post(
     }
 
     try {
-      // Get OTP from database
+      const redisKey = `otp:${transactionId}`;
+      let cachedOtp = null;
+      try {
+        cachedOtp = await redisClient.get(redisKey);
+      } catch (e) {
+        console.warn("Redis get error (continuing with DB path):", e.message);
+      }
+
+      // If OTP found in Redis and matches, fast-path without full select (then mark DB record used)
+      if (cachedOtp && cachedOtp === otpCode) {
+        try {
+          // Ensure transaction belongs to user and is in correct state
+          const [txRows] = await pool.execute(
+            "SELECT id FROM transactions WHERE id = ? AND payer_id = ? AND status IN ('otp_sent','pending','otp_verified')",
+            [transactionId, userId]
+          );
+          if (txRows.length === 0) {
+            return res.status(400).json({ error: "Invalid transaction" });
+          }
+
+          // Mark latest active OTP as used (subquery to avoid race)
+          const [updateResult] = await pool.execute(
+            `UPDATE otp_codes SET is_used = TRUE 
+             WHERE id = (
+               SELECT id FROM (
+                 SELECT id FROM otp_codes 
+                 WHERE transaction_id = ? AND is_used = FALSE AND expires_at > NOW() 
+                 ORDER BY created_at DESC LIMIT 1
+               ) x
+             )`,
+            [transactionId]
+          );
+
+          if (updateResult.affectedRows === 0) {
+            // Fallback to DB logic below
+          } else {
+            await pool.execute(
+              "UPDATE transactions SET status = 'otp_verified' WHERE id = ? AND status != 'otp_verified'",
+              [transactionId]
+            );
+            // Delete redis key to prevent reuse
+            try {
+              await redisClient.del(redisKey);
+            } catch (e) {
+              console.warn("Failed deleting Redis OTP key:", e.message);
+            }
+            return res.json({
+              verified: true,
+              transactionStatus: "otp_verified",
+              message: "OTP verified successfully",
+              source: "cache",
+            });
+          }
+        } catch (fastPathErr) {
+          console.warn(
+            "Fast-path OTP verification failed, using DB path:",
+            fastPathErr.message
+          );
+          // Continue to DB path
+        }
+      }
+
+      // DB fallback (cache miss, mismatch or fast-path failure)
       const [otpRecords] = await pool.execute(
         `SELECT o.* FROM otp_codes o 
              JOIN transactions t ON o.transaction_id = t.id 
@@ -315,7 +377,7 @@ router.post(
 
       const otpRecord = otpRecords[0];
 
-      // Increment attempts
+      // Increment attempts (maintain existing behavior)
       await pool.execute(
         "UPDATE otp_codes SET attempts = attempts + 1 WHERE id = ?",
         [otpRecord.id]
@@ -344,10 +406,21 @@ router.post(
         transactionId,
       ]);
 
+      // Delete redis key if still present
+      try {
+        await redisClient.del(redisKey);
+      } catch (e) {
+        console.warn(
+          "Failed deleting Redis OTP key (post DB path):",
+          e.message
+        );
+      }
+
       res.json({
         verified: true,
         transactionStatus: "otp_verified",
         message: "OTP verified successfully",
+        source: cachedOtp ? "cache+db" : "db",
       });
     } catch (error) {
       console.error("OTP verification error:", error);
