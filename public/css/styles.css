@@ -30,3 +30,65 @@ body {
 .payment-step {
   min-height: 400px;
 }
+
+/* Profile Modal Enhancements */
+.profile-modal .modal-gradient-header {
+  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+  color: #fff;
+  border-top-left-radius: 0.6rem;
+  border-top-right-radius: 0.6rem;
+}
+.profile-avatar {
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #e3f2fd, #f5f7ff);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 4rem;
+  color: var(--primary-color);
+  position: relative;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+}
+.balance-card {
+  background: #fff;
+  border: 1px solid #eef0f4;
+  border-radius: 0.75rem;
+  padding: 0.75rem 1rem;
+}
+.info-item .label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  font-weight: 600;
+  color: #6c757d;
+}
+.info-item .value {
+  font-size: .98rem;
+  font-weight: 500;
+  color: #212529;
+}
+
+/* Generic App Modal */
+#appMessageModal .modal-header {
+  border-bottom: none;
+}
+#appMessageModal .modal-footer {
+  border-top: none;
+}
+.app-modal-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1rem;
+  font-size: 2rem;
+}
+.app-modal-icon.info { background: #e3f2fd; color: #0d6efd; }
+.app-modal-icon.success { background: #e8f9f1; color: #198754; }
+.app-modal-icon.warning { background: #fff4e5; color: #fd7e14; }
+.app-modal-icon.danger { background: #fbe9ea; color: #dc3545; }
+

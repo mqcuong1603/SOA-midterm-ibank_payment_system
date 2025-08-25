@@ -91,8 +91,9 @@ async function resumePayment(transactionId, studentId) {
     }
   } catch (error) {
     console.error("Error resuming payment:", error);
-    alert("Error resuming payment. Please start a new payment.");
-    window.location.href = "/payment.html";
+    appAlert("Error resuming payment. Please start a new payment.", { type: "danger" }).then(() => {
+      window.location.href = "/payment.html";
+    });
   }
 }
 
@@ -100,7 +101,7 @@ async function searchStudent() {
   const studentId = document.getElementById("studentId").value;
 
   if (!studentId) {
-    alert("Please enter a student ID");
+  appAlert("Please enter a student ID", { type: "warning" });
     return;
   }
 
@@ -119,7 +120,7 @@ async function searchStudent() {
       document.getElementById("proceedBtn").disabled = !e.target.checked;
     });
   } else {
-    alert(data.error || "Student not found");
+  appAlert(data.error || "Student not found", { type: "danger" });
   }
 }
 
@@ -146,14 +147,14 @@ async function proceedToOTP() {
         startOTPTimer();
       } else {
         const otpData = await otpResponse.json();
-        alert(otpData.error || "Failed to send OTP");
+  appAlert(otpData.error || "Failed to send OTP", { type: "danger" });
       }
     } else {
-      alert(data.error || "Payment initiation failed");
+  appAlert(data.error || "Payment initiation failed", { type: "danger" });
     }
   } catch (error) {
     console.error("Payment initiation error:", error);
-    alert("An error occurred. Please try again.");
+  appAlert("An error occurred. Please try again.", { type: "danger" });
   } finally {
     // Hide loading state
     hideButtonLoading("proceedBtn", "proceedBtnText", "proceedBtnLoading");
@@ -246,7 +247,7 @@ function startOTPTimer(initialSeconds = 300) {
 
 async function resendOTP() {
   if (!currentTransaction) {
-    alert("No active transaction found");
+  appAlert("No active transaction found", { type: "warning" });
     return;
   }
 
@@ -266,14 +267,14 @@ async function resendOTP() {
       });
       document.querySelector(".otp-input").focus();
 
-      alert("OTP resent successfully!");
+  appAlert("OTP resent successfully!", { type: "success", autoCloseMs: 1500 });
     } else {
       const data = await response.json();
-      alert(data.error || "Failed to resend OTP");
+  appAlert(data.error || "Failed to resend OTP", { type: "danger" });
     }
   } catch (error) {
     console.error("Resend OTP error:", error);
-    alert("An error occurred. Please try again.");
+  appAlert("An error occurred. Please try again.", { type: "danger" });
   }
 }
 
@@ -284,7 +285,7 @@ async function verifyOTP() {
     .join("");
 
   if (otp.length !== 6) {
-    alert("Please enter complete OTP");
+  appAlert("Please enter complete OTP", { type: "warning" });
     return;
   }
 
@@ -308,11 +309,11 @@ async function verifyOTP() {
       showStep(3);
     } else {
       const data = await response.json();
-      alert(data.error || "Invalid OTP");
+  appAlert(data.error || "Invalid OTP", { type: "danger" });
     }
   } catch (error) {
     console.error("OTP verification error:", error);
-    alert("An error occurred. Please try again.");
+  appAlert("An error occurred. Please try again.", { type: "danger" });
   } finally {
     // Hide loading state
     hideButtonLoading("verifyBtn", "verifyBtnText", "verifyBtnLoading");
@@ -327,17 +328,20 @@ async function confirmPayment() {
   const data = await response.json();
 
   if (response.ok) {
-    alert("Payment successful!");
-    window.location.href = "history.html";
+    appAlert("Payment successful!", { type: "success", title: "Success" }).then(() => {
+      window.location.href = "history.html";
+    });
   } else {
-    alert(data.error || "Payment failed");
+  appAlert(data.error || "Payment failed", { type: "danger" });
   }
 }
 
 function cancelPayment() {
-  if (confirm("Are you sure you want to cancel?")) {
-    window.location.href = "payment.html";
-  }
+  appConfirm("Are you sure you want to cancel?", { type: "warning" }).then(
+    (confirmed) => {
+      if (confirmed) window.location.href = "payment.html";
+    }
+  );
 }
 
 // Helper functions for loading states
@@ -417,26 +421,24 @@ function continueActiveTransaction(transactionId, studentId) {
 }
 
 async function cancelActiveTransaction() {
-  if (
-    !confirm(
-      "Are you sure you want to cancel your active transaction? This action cannot be undone."
-    )
-  ) {
-    return;
-  }
+  appConfirm(
+    "Are you sure you want to cancel your active transaction? This action cannot be undone.",
+    { type: "warning" }
+  ).then(async (confirmed) => {
+    if (!confirmed) return;
 
-  try {
-    const response = await apiCall("/payment/cancel-active", "DELETE");
-    const data = await response.json();
+    try {
+      const response = await apiCall("/payment/cancel-active", "DELETE");
+      const data = await response.json();
 
-    if (data.success) {
-      alert("Transaction cancelled successfully!");
-      window.location.reload();
-    } else {
-      alert("Failed to cancel transaction: " + data.message);
+      if (data.success) {
+        appAlert("Transaction cancelled successfully!", { type: "success", autoCloseMs: 1500 }).then(() => window.location.reload());
+      } else {
+        appAlert("Failed to cancel transaction: " + data.message, { type: "danger" });
+      }
+    } catch (error) {
+      console.error("Error cancelling transaction:", error);
+      appAlert("Error cancelling transaction", { type: "danger" });
     }
-  } catch (error) {
-    console.error("Error cancelling transaction:", error);
-    alert("Error cancelling transaction");
-  }
+  });
 }

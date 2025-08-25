@@ -190,3 +190,92 @@ function logout() {
   sessionStorage.clear();
   window.location.href = "index.html";
 }
+
+/* =========================
+   Application Modal System
+   Replaces native alert()/confirm()
+   ========================= */
+(function initAppModal() {
+  if (document.getElementById("appMessageModal")) return;
+  const modalHtml = `
+  <div class="modal fade" id="appMessageModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="appModalTitle">Message</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body text-center">
+          <div id="appModalIcon" class="app-modal-icon info d-none"><i class="bi bi-info-circle"></i></div>
+          <p id="appModalMessage" class="mb-0"></p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="appModalCancelBtn" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary" id="appModalOkBtn">OK</button>
+        </div>
+      </div>
+    </div>
+  </div>`;
+  document.body.insertAdjacentHTML("beforeend", modalHtml);
+})();
+
+function appModalBase({ title = "Message", message = "", type = "info", showCancel = false, confirmText = "OK", cancelText = "Cancel", autoCloseMs = 0 }) {
+  const modalEl = document.getElementById("appMessageModal");
+  const titleEl = document.getElementById("appModalTitle");
+  const messageEl = document.getElementById("appModalMessage");
+  const iconWrap = document.getElementById("appModalIcon");
+  const okBtn = document.getElementById("appModalOkBtn");
+  const cancelBtn = document.getElementById("appModalCancelBtn");
+
+  titleEl.textContent = title;
+  messageEl.textContent = message;
+  iconWrap.className = `app-modal-icon ${type}`;
+  iconWrap.innerHTML = {
+    info: '<i class="bi bi-info-circle"></i>',
+    success: '<i class="bi bi-check-circle"></i>',
+    warning: '<i class="bi bi-exclamation-triangle"></i>',
+    danger: '<i class="bi bi-x-circle"></i>'
+  }[type] || '<i class="bi bi-info-circle"></i>';
+  iconWrap.classList.remove("d-none");
+
+  cancelBtn.style.display = showCancel ? "inline-block" : "none";
+  okBtn.textContent = confirmText;
+  cancelBtn.textContent = cancelText;
+
+  return new Promise((resolve) => {
+    const bsModal = new bootstrap.Modal(modalEl);
+    const cleanup = () => {
+      okBtn.removeEventListener("click", onOk);
+      cancelBtn.removeEventListener("click", onCancel);
+      modalEl.removeEventListener("hidden.bs.modal", onHidden);
+    };
+    const onOk = () => { resolve(true); bsModal.hide(); };
+    const onCancel = () => { resolve(false); };
+    const onHidden = () => cleanup();
+    okBtn.addEventListener("click", onOk);
+    cancelBtn.addEventListener("click", onCancel);
+    modalEl.addEventListener("hidden.bs.modal", onHidden);
+    bsModal.show();
+    if (autoCloseMs > 0) setTimeout(() => { if (modalEl.classList.contains("show")) { resolve(true); bsModal.hide(); } }, autoCloseMs);
+  });
+}
+
+function appAlert(message, options = {}) {
+  return appModalBase({ message, ...options, showCancel: false });
+}
+
+function appConfirm(message, options = {}) {
+  return appModalBase({ message, ...options, showCancel: true, confirmText: options.confirmText || "Yes", cancelText: options.cancelText || "No" });
+}
+
+// Replace native alert/confirm wrappers (optional)
+window.alert = (msg) => appAlert(msg);
+window.confirm = (msg) => {
+  // Return a boolean synchronously via deprecation warning? We'll return false immediately & use async variant where refactored.
+  console.warn("Synchronous confirm() overridden. Use appConfirm(). Returning false. Message:", msg);
+  return false;
+};
+
+// Export for other scripts if modules not used
+window.appAlert = appAlert;
+window.appConfirm = appConfirm;
