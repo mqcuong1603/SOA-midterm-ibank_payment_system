@@ -1,10 +1,9 @@
 import { Router } from "express";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs"; // switched to pure JS to avoid native binary issues
 import jwt from "jsonwebtoken";
 import { execute } from "../config/database.js";
 import { body, validationResult } from "express-validator";
 
-const { compare } = bcrypt;
 const { sign } = jwt;
 
 const router = Router();
@@ -35,7 +34,7 @@ router.post(
       }
 
       const user = users[0];
-      const isValidPassword = await compare(password, user.password_hash);
+      const isValidPassword = bcrypt.compareSync(password, user.password_hash);
 
       if (!isValidPassword) {
         return res.status(401).json({ error: "Invalid credentials" });

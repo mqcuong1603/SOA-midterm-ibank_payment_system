@@ -308,3 +308,54 @@ window.confirm = (msg) => {
 // Export for other scripts if modules not used
 window.appAlert = appAlert;
 window.appConfirm = appConfirm;
+
+/* =========================
+   Email Inbox Helper
+   ========================= */
+function getInboxUrl(email) {
+  if (!email || typeof email !== "string" || !email.includes("@")) return null;
+  const domain = email.split("@").pop().toLowerCase();
+  const map = {
+    "gmail.com": "https://mail.google.com/mail/u/0/#inbox",
+    "googlemail.com": "https://mail.google.com/mail/u/0/#inbox",
+    "outlook.com": "https://outlook.live.com/mail/0/",
+    "hotmail.com": "https://outlook.live.com/mail/0/",
+    "live.com": "https://outlook.live.com/mail/0/",
+    "msn.com": "https://outlook.live.com/mail/0/",
+    "yahoo.com": "https://mail.yahoo.com/d/folders/1",
+    "yahoo.com.vn": "https://mail.yahoo.com/d/folders/1",
+    "icloud.com": "https://www.icloud.com/mail",
+    "proton.me": "https://mail.proton.me/u/0/inbox",
+    "protonmail.com": "https://mail.proton.me/u/0/inbox",
+    "zoho.com": "https://mail.zoho.com/zm/#mail/folder/inbox",
+    "yandex.com": "https://mail.yandex.com/",
+    "yandex.ru": "https://mail.yandex.ru/",
+  };
+  return map[domain] || null;
+}
+
+function openInbox(email) {
+  const url = getInboxUrl(email);
+  if (url) {
+    window.open(url, "_blank", "noopener");
+  } else {
+    // Fallback: try generic webmail subdomain or search
+    const domain = (email || "").split("@").pop();
+    const guess = `https://mail.${domain}`;
+    // Open guess first; user can adjust. Also open a search tab if guess likely invalid.
+    window.open(guess, "_blank", "noopener");
+    setTimeout(() => {
+      window.open(
+        `https://www.google.com/search?q=${encodeURIComponent(
+          domain + " webmail login"
+        )}`,
+        "_blank",
+        "noopener"
+      );
+    }, 400);
+  }
+}
+
+// Expose globally
+window.openInbox = openInbox;
+window.getInboxUrl = getInboxUrl;

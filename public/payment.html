@@ -115,7 +115,7 @@
           <!-- Step 2: OTP Verification -->
           <div id="step2" class="payment-step d-none">
             <h5>OTP Verification</h5>
-            <p>Enter the 6-digit code sent to your email</p>
+            <p>Enter the 6-digit code sent to your email.</p>
             <div class="row justify-content-center">
               <div class="col-md-6">
                 <div class="d-flex justify-content-center gap-2 mb-3">
@@ -162,6 +162,10 @@
                   <button class="btn btn-link" onclick="resendOTP()">
                     Resend Code
                   </button>
+                  <button type="button" class="btn btn-outline-success ms-2" id="openInboxBtn" onclick="openUserInbox()">
+                    <i class="bi bi-envelope-open"></i> Open Email Inbox
+                  </button>
+                  <div class="small text-muted mt-2" id="inboxHint"></div>
                 </div>
               </div>
             </div>
@@ -190,10 +194,10 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="js/api.js"></script>
-    <script src="js/navbar.js"></script>
-    <script src="js/payment.js"></script>
-    <script src="js/utils.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/navbar.js"></script>
+  <script src="js/payment.js"></script>
 
     <script>
       // Load navbar
@@ -205,6 +209,39 @@
 
             // Initialize navbar functionality
             initializeNavbar();
+            // Initialize Inbox button if user info present
+            if (typeof openInbox === 'function') {
+              window.openUserInbox = function() {
+                try {
+                  const user = JSON.parse(sessionStorage.getItem('user')||'{}');
+                  if (!user.email) {
+                    appAlert('No email found in profile.', { type: 'warning' });
+                    return;
+                  }
+                  const url = getInboxUrl(user.email);
+                  if (url) {
+                    document.getElementById('inboxHint').textContent = 'Opening inbox in a new tab...';
+                    openInbox(user.email);
+                  } else {
+                    appConfirm('Direct link not available for this email domain. Open guessed webmail page?', { type: 'info' }).then(ok => {
+                      if (ok) openInbox(user.email);
+                    });
+                  }
+                } catch(e) {
+                  console.error('Inbox open error', e);
+                }
+              }
+              // Prefill hint
+              try {
+                const user = JSON.parse(sessionStorage.getItem('user')||'{}');
+                if (user.email) {
+                  const url = getInboxUrl(user.email);
+                  if (url) {
+                    document.getElementById('inboxHint').innerHTML = 'Shortcut ready for <strong>'+user.email.split('@')[1]+'</strong>.';
+                  }
+                }
+              } catch(_) {}
+            }
           })
           .catch((error) => console.error("Error loading navbar:", error));
       });

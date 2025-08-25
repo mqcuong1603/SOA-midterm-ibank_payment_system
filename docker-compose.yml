@@ -75,8 +75,8 @@ services:
     networks:
       - ibanking-network
     volumes:
-      - ./:/app
-      - /app/node_modules
+      - ./:/app:delegated
+    # Removed /app/node_modules anonymous volume to prevent overwriting image-built deps
 
   # Adminer for database management
   adminer:

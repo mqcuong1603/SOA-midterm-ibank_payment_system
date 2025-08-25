@@ -1,45 +1,49 @@
-# Base stage with common setup
-FROM node:18-alpine AS base
+###############################################
+# Base image (Debian slim) to avoid musl issues
+# Adds build tools once so native modules compile
+###############################################
+FROM node:18-bullseye-slim AS base
 WORKDIR /app
-RUN apk add --no-cache python3 make g++ libc6-compat
+ENV TZ=UTC
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends python3 build-essential \
+    && rm -rf /var/lib/apt/lists/*
 COPY package*.json ./
 
-# Development stage
-FROM base AS development
+###############################################
+# Development dependencies (includes dev deps)
+###############################################
+FROM base AS deps-dev
+ENV NODE_ENV=development
 RUN npm ci
-# Remove any existing bcrypt binaries and rebuild completely
-RUN rm -rf node_modules/bcrypt
-RUN npm install bcrypt --build-from-source
-RUN npm install -g nodemon
+
+###############################################
+# Production dependencies (omit dev deps)
+###############################################
+FROM base AS deps-prod
+ENV NODE_ENV=production
+RUN npm ci --omit=dev
+
+###############################################
+# Development runtime stage
+###############################################
+FROM node:18-bullseye-slim AS development
+WORKDIR /app
+ENV NODE_ENV=development
+# Copy node_modules from deps-dev (native modules already built for this image)
+COPY --from=deps-dev /app/node_modules ./node_modules
 COPY . .
 EXPOSE 3000
-CMD ["nodemon", "server.js"]
+# Use npx to run local nodemon (present in dev deps)
+CMD ["npx", "nodemon", "server.js"]
 
-# Production dependencies stage
-FROM base AS prod-deps
-RUN npm ci --only=production --no-optional
-# Remove any existing bcrypt binaries and rebuild completely
-RUN rm -rf node_modules/bcrypt
-RUN npm install bcrypt --build-from-source
-
-# Production stage
-FROM node:18-alpine AS production
+###############################################
+# Production runtime stage
+###############################################
+FROM node:18-bullseye-slim AS production
 WORKDIR /app
-
-# Install runtime dependencies for bcrypt
-RUN apk add --no-cache python3 make g++ libc6-compat
-
-# Copy production dependencies from prod-deps stage
-COPY --from=prod-deps /app/node_modules ./node_modules
-
-# Copy application code
+ENV NODE_ENV=production
+COPY --from=deps-prod /app/node_modules ./node_modules
 COPY . .
-
-# Create non-root user
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodejs -u 1001 && \
-    chown -R nodejs:nodejs /app
-
-USER nodejs
 EXPOSE 3000
 CMD ["node", "server.js"]
